@@ -14,7 +14,6 @@
 			<option>land 3</option>
 		</select>
 	</label>
-	<br>
 
 	<!-- Fetch Events from Database -->
 	<label>
@@ -32,18 +31,20 @@
 		<b>Level:</b><br>
 		<input type="number" name="level">
 	</label>
-	<br>
 
 	<!-- Add Check from JS to avoid negative numbers -->
 	<label>
 		<b>Recovery Rate:</b><br>
 		<input type="number" name="recover_rate">
 	</label>
-	<br>
 
-	<br>
-	<input type="submit" name="submit" value="BRING EVENT">
+	<input type="submit" name="submit" value="Call Event">
 
 </form>
+
+<!-- Fetch Past Events from Database -->
+<br>
+<h1 style="border-bottom-style: solid; border-bottom-width: 1px; border-bottom-color: #262626;">History</h1>
+<p>Fetch Past Events from Database</p>
 
 <?php require APPROOT.'/views/inc/footer.php'; ?>
