@@ -101,11 +101,11 @@ var properties =  [
 	{id:23, q_factor: 5, delta: 0, total_ownership: 0, name:"Aizawl", price: 350, base_price: 350, indexValue: 1475},
 	{id:24, q_factor: 5, delta: 0, total_ownership: 0, name:"Kolkata", price: 825, base_price: 825, indexValue: 1521},
 	{id:25, q_factor: 5, delta: 0, total_ownership: 0, name:"Bhubaneswar", price: 375, base_price: 375, indexValue: 1794},
-	{id:25, q_factor: 5, delta: 0, total_ownership: 0, name:"JAIL", price: 0, base_price: 0, indexValue: 2193},
-	{id:26, q_factor: 5, delta: 0, total_ownership: 0, name:"Andaman & Nicobar", price: 700, base_price: 700, indexValue: 2684},
-	{id:27, q_factor: 5, delta: 0, total_ownership: 0, name:"Visakhapatnam", price: 375, base_price: 375, indexValue: 2064},
-	{id:28, q_factor: 5, delta: 0, total_ownership: 0, name:"Hyderabad", price: 750, base_price: 750, indexValue: 2110},
-	{id:29, q_factor: 5, delta: 0, total_ownership: 0, name:"Chennai", price: 650, base_price: 650, indexValue: 2554}
+	{id:26, q_factor: 5, delta: 0, total_ownership: 0, name:"JAIL", price: 0, base_price: 0, indexValue: 2193},
+	{id:27, q_factor: 5, delta: 0, total_ownership: 0, name:"Andaman & Nicobar", price: 700, base_price: 700, indexValue: 2684},
+	{id:28, q_factor: 5, delta: 0, total_ownership: 0, name:"Visakhapatnam", price: 375, base_price: 375, indexValue: 2064},
+	{id:29, q_factor: 5, delta: 0, total_ownership: 0, name:"Hyderabad", price: 750, base_price: 750, indexValue: 2110},
+	{id:30, q_factor: 5, delta: 0, total_ownership: 0, name:"Chennai", price: 650, base_price: 650, indexValue: 2554}
 ];
 
 var events = [
@@ -116,12 +116,14 @@ var events = [
 var playerArray = [];
 var land_event = [];
 var player_land = [];
+var transaction = [];
 
 var isPaused = false;
 
 var current_player_id = 1;
 
 const RENT_FACTOR = 10;
+const JAIL_LIFE = 3;
 
 var shouldExecuteEvent = false;
 var le_landId, le_eventId, le_event_life, le_event_level;
@@ -147,10 +149,10 @@ window.onload = function(){
 	updateWorldArray();
 
 	addPlayer("Shubham", 1000);
-	consoleOut();
+	addPlayer("Bansal", 1200);
 
+	//If paused then no call to changes
 	if(!isPaused){
-		//If paused then no call to changes
 		mainGameLoop();
 	}
 
@@ -161,15 +163,31 @@ window.onload = function(){
 
 //This calls all the steps that need to happen after pressing global next
 function mainGameLoop(){	
-	
-	//Moves current player to random dice location
-	movePointerTo(current_player_id, rollDice());
 
-	//Checks if user has to give rent or not
-	rentcheck();
+	//update jail status
+	updateJailStatus();
 
-	//Buys land
-	callBuy();
+	//only if user is not in jail
+	if(playerArray[current_player_id-1].status == "ACTIVE" && playerArray[current_player_id-1].j_life == 0){
+
+		//Moves current player to random dice location
+		movePointerTo(current_player_id, rollDice());
+
+		//checks jail
+		isJail();
+
+		//Checks if user has to give rent or not
+		rentcheck();
+
+		//checks if user's balance goes negatve
+		isDead();
+
+		//Buys land
+		callBuy();
+
+		//checks if user's balance goes negatve
+		isDead();
+	}	
 
 	//Update new player id
 	updatePlayerId();
@@ -180,13 +198,9 @@ function mainGameLoop(){
 	//update quality factor
 	updateLandPrices();
 
+	//For debug only
 	consoleOut();
-
-	//TESTING ENDS HERE
 }
-
-// This binds callEvent to button
-$(document).ready(function(){$("#test").click(callEvent);});
 
 // This binds mainGameLoop to button
 $(document).ready(function(){$("#next").click(mainGameLoop);});
@@ -194,6 +208,19 @@ $(document).ready(function(){$("#next").click(mainGameLoop);});
 //returns a random number
 function rollDice(){
 	return Math.floor(Math.random()*6+1);
+}
+
+//This function handles the jail system
+function updateJailStatus(){
+	if(playerArray[current_player_id-1].status == "JAIL"){
+		playerArray[current_player_id-1].j_life--;
+
+		//if jail life gets over
+		if(playerArray[current_player_id-1].j_life <= 0){
+			playerArray[current_player_id-1].status = "ACTIVE";
+			playerArray[current_player_id-1].j_life = 0;
+		}
+	}
 }
 
 //This function moves the pointer to that particular location
@@ -211,6 +238,27 @@ function movePointerTo(id, value){
 	}
 }
 
+//This function checks jail encounters
+function isJail(){
+	if(properties[playerArray[current_player_id-1].currentIndex].base_price == 0){
+		playerArray[current_player_id-1].status = "JAIL";
+		playerArray[current_player_id-1].j_life = JAIL_LIFE;
+	}
+}
+
+//this function checks whether user is dead or not
+function isDead(){
+	if(playerArray[current_player_id-1].money <= 0){
+		playerArray[current_player_id-1].status = "DEAD";
+		for(var i=0; i<player_land.length; i++){
+			if(player_land[i].u_id == current_player_id){
+				player_land.splice(0,1);
+				i--;
+			}
+		}
+	}
+}
+
 //This function checks rent and deducts accordingly
 function rentcheck(){
 	var current_land_id = (playerArray[current_player_id-1].currentIndex + 1);
@@ -219,10 +267,16 @@ function rentcheck(){
 			for(var j=0; j<playerArray.length; j++){
 				if(playerArray[j].id == player_land[i].u_id){
 					//Adding rent to other player's account
-					playerArray[j].money += ((RENT_FACTOR/100)*(player_land[i].per/100)*properties[current_land_id-1]);
+					playerArray[j].money += ((RENT_FACTOR/100)*(player_land[i].per/100)*properties[current_land_id-1].price);
+
+					//Pushing these details to transaction table
+					addTransactionDetails(playerArray[j].name, " got rent from "+playerArray[current_player_id-1].name+" ,gets amount ", "+"+((RENT_FACTOR/100)*(player_land[i].per/100)*properties[current_land_id-1].price));
 
 					//decreasing current player's rent
-					playerArray[current_player_id-1].money -= ((RENT_FACTOR/100)*(player_land[i].per/100)*properties[current_land_id-1]);
+					playerArray[current_player_id-1].money -= ((RENT_FACTOR/100)*(player_land[i].per/100)*properties[current_land_id-1].price);
+
+					//Pushing these details to transaction table
+					addTransactionDetails(playerArray[current_player_id-1].name, " Paid rent to "+playerArray[j].name+" ,gets amount ", "-"+((RENT_FACTOR/100)*(player_land[i].per/100)*properties[current_land_id-1].price));
 				}
 			}
 		}
@@ -262,6 +316,9 @@ function addPlayerLand(landId, userId, ownership){
 
 		//Now we have to decrement the value of land from player's revenue
 		playerArray[userId-1].money -= (ownership/100)*properties[landId-1].price;
+
+		//Pushing these details to transaction table
+		addTransactionDetails(playerArray[current_player_id-1].name, "Bought "+ownership+"% of "+properties[landId-1].name, "-"+(ownership/100)*properties[landId-1].price);
 	}
 }
 
@@ -321,11 +378,17 @@ function updateLandPrices(){
 
 //This function adds a row to player table
 function addPlayer(team_name, team_money){
-	var temp = {id: playerArray.length+1, currentIndex: 0, name: team_name, posX: 0, posY: 0, money: team_money};
+	var temp = {id: playerArray.length+1, currentIndex: 0, name: team_name, posX: 0, posY: 0, money: team_money, status: "ACTIVE", j_life: 0};
 	playerArray.push(temp);
 
 	//To reset all pointers after adding any player
 	resetAllPointers();
+}
+
+//This function pushes the transaction details to transaction table
+function addTransactionDetails(userName, reasonFor, amountSpent){
+	var temp = {id: transaction.length+1, u_name: userName, reason: reasonFor, amount: amountSpent};
+	transaction.push(temp);
 }
 
 //This Resets all the points after player is created (Reset position is patiala)
@@ -445,8 +508,10 @@ function setGraphics(){
 //This function draws all the map positions
 function drawAllPositions(){
 	for(var i=0; i<playerArray.length; i++){
-		canvasContext.drawImage(positionImage, playerArray[i].posX, playerArray[i].posY, POINTER_W/2, POINTER_H/2);
-		drawText(playerArray[i].name, (playerArray[i].posX - positionImage.width/5), (playerArray[i].posY - positionImage.height/12), "black");
+		if(playerArray[i].status != "DEAD"){
+			canvasContext.drawImage(positionImage, playerArray[i].posX, playerArray[i].posY, POINTER_W/2, POINTER_H/2);
+			drawText(playerArray[i].name, (playerArray[i].posX - positionImage.width/5), (playerArray[i].posY - positionImage.height/12), "black");
+		}
 	}
 }
 
@@ -514,7 +579,7 @@ function consoleOut(){
 	if(playerArray.length){
 		console.log("PLAYER TABLE");
 		for(var i=0; i<playerArray.length; i++){
-			//console.log("ID: "+playerArray[i].id+" currentIndex: "+playerArray[i].currentIndex+" Name: "+playerArray[i].name);
+			console.log("ID: "+playerArray[i].id+" currentIndex: "+playerArray[i].currentIndex+" Name: "+playerArray[i].name);
 			console.log("Pos X: "+playerArray[i].posX+" Pos Y: "+playerArray[i].posY+" Money: "+playerArray[i].money);
 		}
 	}
@@ -523,6 +588,13 @@ function consoleOut(){
 		console.log("PLAYER_LAND TABLE");
 		for(var i=0; i<player_land.length; i++){
 			console.log("Land ID: "+player_land[i].l_id+" User_ID: "+player_land[i].u_id+" Ownership: "+player_land[i].per);
+		}
+	}
+
+	if(transaction.length){
+		console.log("TRANSACTION TABLE");
+		for(var i=0; i<transaction.length; i++){
+			console.log(transaction[i].u_name+" "+transaction[i].reason+" gets amount "+transaction[i].amount);
 		}
 	}
 
